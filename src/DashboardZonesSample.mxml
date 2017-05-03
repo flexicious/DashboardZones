@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:dashboard="com.flexicious.components.dashboard.*"
+					>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.flexicious.components.dashboard.Dashlet;
+			import com.flexicious.components.dashboard.DragDropZone;
+			import com.flexicious.sample.Pod;
+			import com.flexicious.sample.dashboard.samplerenderers.SampleDataGrid;
+			import com.flexicious.sample.pdf.AlivePdfGenerator;
+			import com.flexicious.utils.UIUtils;
+			
+			import mx.charts.PieChart;
+			import mx.controls.DataGrid;
+			import mx.events.FlexEvent;
+			
+			import spark.layouts.HorizontalLayout;
+			import spark.layouts.VerticalLayout;
+			import spark.layouts.supportClasses.LayoutBase;
+			
+			private function getContentLayout():LayoutBase{
+				var layout:VerticalLayout = new VerticalLayout();
+				layout.paddingLeft=layout.paddingRight=layout.paddingBottom=layout.paddingTop=5;
+				return layout;
+			}
+			
+			protected function dashboardZones_creationCompleteHandler(event:FlexEvent):void
+			{
+				var dashletZone:DragDropZone;
+				dashletZone = new DragDropZone();
+				dashletZone.id = "zone1";
+				dashletZone.percentHeight = 100;
+				dashletZone.percentWidth = 100;
+				dashletZone.setStyle("backgroundAlpha", "0");
+				dashletZone.setStyle("borderVisible", false);
+				dashletZone.layout = new HorizontalLayout();
+				
+				
+				
+				
+				var dashlet:Dashlet = new Dashlet();
+				dashlet.title = "Dashlet 1";
+				dashlet.percentHeight=100;
+				dashlet.percentWidth=100;
+				dashlet.draggable = true;
+				dashlet.enableMaximizeAndRestore=true;
+				dashlet.enableMinimize=true;
+				
+				dashlet.itemRenderer = new ClassFactory(SampleDataGrid);
+				
+				dashletZone.addDashlet(dashlet);
+				dashlet.dragDropZone = dashletZone;
+				dashlet.dashboardContainer = dashboardZones;
+				dashlet.dispatchEvent(new Event("maximizeChanged"));
+				//dashboardZones.dragDropZones.push(dashletZone);      
+				dashboardZones.dragDropZones=(dashboardZones.dragDropZones);
+				
+				var dashlet2:Dashlet = new Dashlet();
+				dashlet2.title = "Dashlet 2";
+				dashlet2.percentHeight=100;
+				dashlet2.percentWidth=100;
+				dashlet2.draggable = true;
+				dashlet2.enableMaximizeAndRestore=true;
+				dashlet2.enableMinimize=true;		
+				
+				dashlet2.itemRenderer = new ClassFactory(SampleDataGrid);
+				
+				dashletZone.addDashlet(dashlet2);
+				
+				dashlet2.dragDropZone = dashletZone;
+				dashlet2.dashboardContainer = dashboardZones;
+				dashlet2.dispatchEvent(new Event("maximizeChanged"));
+				dashboardZones.dragDropZones.push(dashletZone);      
+				dashboardZones.dragDropZones=(dashboardZones.dragDropZones);
+				
+				var dashletZone2:DragDropZone;
+				dashletZone2 = new DragDropZone();
+				dashletZone2.id = "zone3";
+				dashletZone2.percentHeight = 100;
+				dashletZone2.percentWidth = 100;
+				dashletZone2.setStyle("backgroundAlpha", "0");
+				dashletZone2.setStyle("borderVisible", false);
+				dashletZone2.layout = new HorizontalLayout();
+				
+				
+				var dashlet3:Dashlet = new Dashlet();
+				dashlet3.title = "Dashlet 3";
+				dashlet3.percentHeight=100;
+				dashlet3.percentWidth=100;
+				dashlet3.draggable = true;
+				dashlet3.enableMaximizeAndRestore=true;
+				dashlet3.enableMinimize=true;	
+				
+				dashlet3.itemRenderer = new ClassFactory(SampleDataGrid);
+				
+				dashletZone2.addDashlet(dashlet3);
+				dashlet3.dragDropZone = dashletZone2;
+				dashlet3.dashboardContainer = dashboardZones;
+				dashlet3.dispatchEvent(new Event("maximizeChanged"));
+				dashboardZones.dragDropZones.push(dashletZone2);      
+				dashboardZones.dragDropZones=(dashboardZones.dragDropZones);
+				
+				dashboardZones.loadPreferences();
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<dashboard:DashboardContainer id="dashboardZones" width="100%" height="100%" title="Reconciliation" enablePreferencePersistence="true"  autoLoadPreferences="false"
+								  contentLayoutFunction="getContentLayout" maximizedContentLayoutFunction="getContentLayout" preferencePersistenceKey="exampleDashboard"
+								  pdfBytesReady="new AlivePdfGenerator().generate(event.target as DashboardContainer ,event.printOptions)"
+								  enableTaskBar="true" skinClass="com.flexicious.sample.dashboard.customskins.smooth.DashboardSkin" 
+								  creationComplete="dashboardZones_creationCompleteHandler(event)">
+		<dashboard:dragDropZones>			
+			
+		</dashboard:dragDropZones>
+	</dashboard:DashboardContainer>
+	<s:layout>
+		<s:VerticalLayout paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5"/>
+	</s:layout>
+</s:NavigatorContent>

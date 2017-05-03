@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+ADOBE SYSTEMS INCORPORATED
+Copyright 2008 Adobe Systems Incorporated
+All Rights Reserved.
+
+NOTICE: Adobe permits you to use, modify, and distribute this file
+in accordance with the terms of the license agreement accompanying it.
+
+-->
+<!--- The default skin class for a Flexicious DashboardContainer.  
+    @langversion 3.0
+    @playerversion Flash 10
+    @playerversion AIR 1.5
+    @productversion Flex 4
+-->
+<s:SparkSkin xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" 
+    xmlns:fb="http://ns.adobe.com/flashbuilder/2009" blendMode="normal" mouseEnabled="false" 
+    minWidth="131" minHeight="127" alpha.disabled="0.5" xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:controls="com.flexicious.controls.*" xmlns:dashboard="com.flexicious.components.dashboard.*" xmlns:container="com.flexicious.components.container.*" >
+	<fx:Metadata>[HostComponent("com.flexicious.components.dashboard.DashboardContainer")]</fx:Metadata>
+    
+    <fx:Script fb:purpose="styling">
+        <![CDATA[
+			import com.flexicious.components.IconRepository;
+			import com.flexicious.utils.StringRepo;
+			import com.flexicious.utils.UIUtils;
+			
+			import mx.core.FlexVersion;
+			import mx.events.DropdownEvent;
+		
+		/* Define the skin elements that should not be colorized. 
+        For panel, border and title background are skinned, but the content area, background, border, and title text are not. */
+        static private const exclusions:Array = ["background", "titleDisplay", "contentGroup","border"];
+			
+		/* exclusions before Flex 4.5 for backwards-compatibility purposes */
+		static private const exclusions_4_0:Array = ["background", "titleDisplay", "contentGroup"];
+		
+		/**
+		 * @private
+		 */
+		override public function get colorizeExclusions():Array 
+		{
+			// Since border is styleable via borderColor, no need to allow chromeColor to affect
+			// the border.  This is wrapped in a compatibility flag since this change was added  
+			// in Flex 4.5
+			if (FlexVersion.compatibilityVersion < FlexVersion.VERSION_4_5)
+			{
+				return exclusions_4_0;
+			}
+			
+			return exclusions;
+		}
+        
+        /**
+         * @private
+         */
+        override protected function initializationComplete():void
+        {
+            useChromeColor = true;
+            super.initializationComplete();
+        }
+        
+        /**
+         * @private
+         */
+        override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
+        {
+			//we've taken out all the stlying stuff from the default skin, we will be giving a  fully custom look and feel 
+			//in the skin itself
+			super.updateDisplayList(unscaledWidth, unscaledHeight);
+        }
+    	
+		protected function btnSettings_openHandler(event:DropdownEvent):void
+		{
+/* 			var pt:Point=new Point(0,btnSettings.height);
+			pt=btnSettings.localToGlobal(pt);
+			btnSettings.popUp.move(pt.x-btnSettings.popUp.width+btnSettings.width,pt.y+2)
+			btnSettings.selectedItems=hostComponent.openDashlets;
+ */		}
+			
+		]]>
+    </fx:Script>
+    
+    <s:states>
+        <s:State name="normal" />
+        <s:State name="disabled" />
+    </s:states>
+    
+    <!-- drop shadow can't be hittable so it stays sibling of other graphics -->
+    <!--- @private -->
+    <s:RectangularDropShadow id="dropShadow" blurX="20" blurY="20" alpha="0.32" distance="11" 
+                             angle="90" color="#000000" left="0" top="0" right="0" bottom="0"/>
+    
+    <!-- drop shadow can't be hittable so all other graphics go in this group -->
+    <s:Group left="0" right="0" top="0" bottom="0">
+        
+        <!-- top group mask -->
+        <!--- @private -->
+        <s:Group left="1" top="1" right="1" bottom="1" id="topGroupMask" >
+            <!--- @private -->
+            <s:Rect id="topMaskRect" left="0" top="0" right="0" bottom="0">
+                <s:fill>
+                    <s:SolidColor alpha="0"/>
+                </s:fill>
+            </s:Rect>
+        </s:Group>
+        
+        
+        <!-- layer 1: border -->
+        <!--- @private -->
+        <s:Rect id="border" left="0" right="0" top="0" bottom="0" >
+            <s:stroke>
+                <!--- @private -->
+                <s:SolidColorStroke id="borderStroke" weight="1" color="0xDDD7C0"/>
+            </s:stroke>
+        </s:Rect>
+        
+        <!-- layer 2: background fill -->
+        <!--- Defines the appearance of the PanelSkin class's background. -->
+        
+		<s:Rect left="1" right="1" top="1" bottom="1" radiusX="3" radiusY="3">
+			<s:fill>
+				<s:SolidColor color="0xEEECE1" />
+			</s:fill>
+		</s:Rect>     
+        <!-- layer 3: contents -->
+        <!--- Contains the vertical stack of titlebar and content. -->
+        <s:Group left="1" right="1" top="1" bottom="1" id="contents">
+            <s:layout>
+                <s:VerticalLayout gap="0" horizontalAlign="justify" />
+            </s:layout>
+            
+            <!--- @private -->
+            <s:Group id="topGroup" mask="{topGroupMask}">
+                
+                <!-- layer 0: title bar fill -->
+                <!--- @private -->
+                <s:Rect id="tbFill" left="0" right="0" top="0" bottom="1">
+					<s:fill>
+						<s:SolidColor color="0xEEECE1" />
+					</s:fill>
+                </s:Rect>
+                
+                
+                <!-- layer 2: title bar divider -->
+                <!--- @private -->
+                <s:Rect id="tbDiv" left="3" right="3" height="1" bottom="0">
+                    <s:fill>
+                        <s:SolidColor color="0xC0C0C0" />
+                    </s:fill>
+                </s:Rect>
+                
+                <!-- layer 3: text -->
+                <!--- @copy spark.components.Panel#titleDisplay -->
+                <s:Label id="titleDisplay" maxDisplayedLines="1"
+                         left="9" right="3" top="1" bottom="0" minHeight="30"
+                         verticalAlign="middle" textAlign="start" fontWeight="bold" fontSize="18" color="#C7090A">
+                </s:Label>
+				<s:Group id="buttons" right="2" top="2">
+					<s:layout>
+						<s:HorizontalLayout gap="3"/>
+					</s:layout>
+					
+					<controls:ImageButton width="20" height="20"  source="{IconRepository.pdf}"  
+							   visible="{hostComponent.enablePdf}"
+							   includeInLayout="{hostComponent.enablePdf}"
+							   click="hostComponent.toolbarPdfHandlerFunction()"
+							   />
+					
+					<controls:ImageButton 
+								width="20" height="20"  source="{IconRepository.print}"  
+							   visible="{hostComponent.enablePrint}"
+							   includeInLayout="{hostComponent.enablePrint}"
+							   click="hostComponent.toolbarPrintHandlerFunction()"
+							   />
+					<s:Label text="|" verticalAlign="middle"   height="20"/>
+					<controls:ImageButton 
+						width="20" height="20"  source="{IconRepository.saveSettings}"  
+							   visible="{hostComponent.enablePreferencePersistence}"
+							   includeInLayout="{hostComponent.enablePreferencePersistence}"
+							   click="hostComponent.onSaveSettingsPopup()"
+							   />
+<!--					<controls:MultiSelectComboBox skin="com.flexicious.skins.dashboard.DashboardPopupButtonSkin" 
+							   width="36" height="20"  icon="{IconRepository.dashlets}" open="btnSettings_openHandler(event)"
+							   dataProvider="{hostComponent.dashlets}" labelField="title" dataField="uniqueIdentifier" dropdownWidth="200" id="btnSettings"
+							   addAllItem="true" visible="{hostComponent.enableSettings}"
+							   includeInLayout="{hostComponent.enableSettings}"
+							   />
+-->					<s:Label text="|" verticalAlign="middle"  height="20" />
+					<controls:ImageButton 
+								width="20" height="20"  source="{IconRepository.refresh}"  
+							   visible="{hostComponent.enableRefresh}"
+							   includeInLayout="{hostComponent.enableRefresh}"
+							   click="hostComponent.dispatchAutoRefreshEvent(event)"
+							   toolTip="{StringRepo.AUTO_REFRESH_LAST_UPDATED_ON + ':'+UIUtils.formatDate(hostComponent.lastAutoRefresh,StringRepo.AUTO_REFRESH_DATE_FRMT)}"/>
+						
+					<controls:ImageButton 
+								width="20" height="20"  source="{IconRepository.titlebar}"  
+							   visible="{hostComponent.enableTitleToggle}"
+							   includeInLayout="{hostComponent.enableTitleToggle}"
+							   click="hostComponent.toggleTitleBars()"
+							   />
+				</s:Group>
+
+            </s:Group>
+            
+            <!--
+                Note: setting the minimum size to 0 here so that changes to the host component's
+                size will not be thwarted by this skin part's minimum size.   This is a compromise,
+                more about it here: http://bugs.adobe.com/jira/browse/SDK-21143
+            -->
+            <!--- @copy spark.components.SkinnableContainer#contentGroup -->
+			<s:Group id="contentGroup"   width="100%" height="100%" >
+			</s:Group>
+			<s:Group id="maximizedContentGroup" width="100%" height="100%" minWidth="0" minHeight="0" visible="false" includeInLayout="false">
+			</s:Group>
+			<dashboard:DashboardTaskbar id="taskbar" width="100%" height="50" visible="{hostComponent.enableTaskBar}" includeInLayout="{hostComponent.enableTaskBar}"
+										skinClass="com.flexicious.sample.dashboard.customskins.smooth.DashboardTaskBarSkin">
+			</dashboard:DashboardTaskbar>
+			<s:Rect id="resizeIndicator" left="0" right="0" height="1" bottom="0" visible="false"  includeInLayout="false">
+				<s:stroke>
+					<s:SolidColorStroke color="0x0c0c0c" />
+				</s:stroke>
+			</s:Rect>
+			<container:DashedBorderContainer id="dropIndicator" left="0" right="0" height="1" bottom="0" visible="false"  includeInLayout="false"/>
+
+        </s:Group>
+    </s:Group>
+</s:SparkSkin>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+ADOBE SYSTEMS INCORPORATED
+Copyright 2008 Adobe Systems Incorporated
+All Rights Reserved.
+
+NOTICE: Adobe permits you to use, modify, and distribute this file
+in accordance with the terms of the license agreement accompanying it.
+
+-->
+<!--- The default skin class for a Flexicious DashboardContainer.  
+    @langversion 3.0
+    @playerversion Flash 10
+    @playerversion AIR 1.5
+    @productversion Flex 4
+-->
+<s:SparkSkin xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" 
+    xmlns:fb="http://ns.adobe.com/flashbuilder/2009" blendMode="normal" mouseEnabled="false" 
+    minWidth="131" minHeight="127" alpha.disabled="0.5" xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:controls="com.flexicious.controls.*" >
+	<fx:Metadata>[HostComponent("com.flexicious.components.dashboard.Dashlet")]</fx:Metadata>
+    <fx:Script fb:purpose="styling">
+        <![CDATA[
+			import com.flexicious.components.IconRepository;
+			
+			import mx.core.FlexVersion;
+		
+		/* Define the skin elements that should not be colorized. 
+        For panel, border and title background are skinned, but the content area, background, border, and title text are not. */
+        static private const exclusions:Array = ["background", "titleDisplay", "contentGroup","border"];
+			
+		/* exclusions before Flex 4.5 for backwards-compatibility purposes */
+		static private const exclusions_4_0:Array = ["background", "titleDisplay", "contentGroup"];
+		
+		/**
+		 * @private
+		 */
+		override public function get colorizeExclusions():Array 
+		{
+			// Since border is styleable via borderColor, no need to allow chromeColor to affect
+			// the border.  This is wrapped in a compatibility flag since this change was added  
+			// in Flex 4.5
+			if (FlexVersion.compatibilityVersion < FlexVersion.VERSION_4_5)
+			{
+				return exclusions_4_0;
+			}
+			
+			return exclusions;
+		}
+        
+        /**
+         * @private
+         */
+        override protected function initializationComplete():void
+        {
+            useChromeColor = true;
+            super.initializationComplete();
+        }
+        
+        /**
+         * @private
+         */
+        override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
+        {
+			//we've taken out all the stlying stuff from the default skin, we will be giving a  fully custom look and feel 
+			//in the skin itself
+            super.updateDisplayList(unscaledWidth, unscaledHeight);
+        }
+		
+		
+		
+		]]>
+    </fx:Script>
+    
+    <s:states>
+        <s:State name="normal" />
+        <s:State name="disabled" />
+    </s:states>
+    <s:Group left="0" right="0" top="0" bottom="0">
+        <s:Rect left="1" right="1" top="1" bottom="1" radiusX="3" radiusY="3">
+			<s:fill>
+				<s:SolidColor color="0xEEECE1" />
+			</s:fill>
+		</s:Rect>
+		
+		<!--- @private -->
+        <s:Rect id="border" left="0" right="0" top="0" bottom="0"  radiusX="3" radiusY="3">
+            <s:stroke>
+                <!--- @private -->
+                <s:SolidColorStroke id="borderStroke" weight="1" color="0xDDD7C0"/>
+            </s:stroke>
+        </s:Rect>
+        
+		
+        <!-- layer 3: contents -->
+        <!--- Contains the vertical stack of titlebar and content. -->
+        <s:Group left="1" right="1" top="1" bottom="1" id="contents">
+            <s:layout>
+                <s:VerticalLayout gap="0" horizontalAlign="justify" />
+            </s:layout>
+            
+            <!--- @private -->
+            <s:Group id="topGroup" 
+					 visible="{hostComponent.enableTitleBar}" includeInLayout="{hostComponent.enableTitleBar}">
+                
+                
+                
+                <!-- layer 2: title bar divider -->
+                <!--- @private -->
+                <s:Rect id="tbDiv" left="3" right="3" height="1" bottom="0">
+                    <s:fill>
+                        <s:SolidColor color="0xDDD7C0" />
+                    </s:fill>
+                </s:Rect>
+                
+                <!-- layer 3: text -->
+                <!--- @copy spark.components.Panel#titleDisplay -->
+				<s:Image id="dragGrip" source="{IconRepository.draggrip}" includeInLayout="{hostComponent.draggable}" visible="{hostComponent.draggable}"
+						  width="16" top="3"/>
+                <s:Label id="titleDisplay" maxDisplayedLines="1"
+                         left="16" right="3" top="1" bottom="0" minHeight="30" 
+                         verticalAlign="middle" textAlign="start" fontWeight="bold" color="0x858383">
+                </s:Label>
+				<s:Group id="buttonGroup" right="2" top="2">
+					<s:layout>
+						<s:HorizontalLayout gap="0" verticalAlign="middle"/>
+					</s:layout>
+					<controls:ImageButton width="20" height="20" 
+										  source="{IconRepository.minimize}" 
+										  visible="{hostComponent.enableMinimize &amp;&amp; !hostComponent.isMaximized}"
+										  includeInLayout="{hostComponent.enableMinimize &amp;&amp; !hostComponent.isMaximized}" 
+										  click="hostComponent.minimizeToTaskBar()" />
+					
+					
+					<controls:ImageButton width="20" height="20"  
+										  source="{hostComponent.isCollapsed?IconRepository.expand:IconRepository.collapse}" 
+										  visible="{hostComponent.enableExpandCollapse &amp;&amp; !hostComponent.isMaximized}"
+										  includeInLayout="{hostComponent.enableExpandCollapse &amp;&amp; !hostComponent.isMaximized}"
+										  click="if(hostComponent.isCollapsed)hostComponent.expand();else hostComponent.collapse()"  />
+					<controls:ImageButton width="20" height="20"  
+										  source="{hostComponent.dashboardContainer.currentMaximizedDashlet==hostComponent?IconRepository.restore:IconRepository.maximize}" 
+										  visible="{hostComponent.enableMaximizeAndRestore }"
+										  includeInLayout="{hostComponent.enableMaximizeAndRestore}"
+										  click="if(hostComponent.dashboardContainer.currentMaximizedDashlet==hostComponent)hostComponent.restore();else hostComponent.maximize();"/>
+					
+					<controls:ImageButton width="20" height="20"  
+										  source="{IconRepository.close}" 
+										  visible="{hostComponent.enableClose &amp;&amp;  !hostComponent.isMaximized}"
+										  includeInLayout="{hostComponent.enableClose &amp;&amp;  !hostComponent.isMaximized}"
+										  click="hostComponent.close()"/>
+				</s:Group>
+            </s:Group>
+            
+            <!--
+                Note: setting the minimum size to 0 here so that changes to the host component's
+                size will not be thwarted by this skin part's minimum size.   This is a compromise,
+                more about it here: http://bugs.adobe.com/jira/browse/SDK-21143
+            -->
+            <!--- @copy spark.components.SkinnableContainer#contentGroup -->
+            <s:Group id="contentGroup" width="100%" height="100%" minWidth="0" minHeight="0">
+				<s:Image id="resizeGrip" source="{IconRepository.resize}" includeInLayout="{hostComponent.resizable}" visible="{hostComponent.resizable}"
+						 bottom="1" right="1"/>
+            </s:Group>
+        </s:Group>
+    </s:Group>
+</s:SparkSkin>

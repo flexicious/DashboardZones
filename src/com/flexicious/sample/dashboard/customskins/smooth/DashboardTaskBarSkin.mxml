@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--- The default skin class for a DashbardTaskbar container.  
+      @langversion 3.0
+      @playerversion Flash 10
+      @playerversion AIR 1.5
+      @productversion Flex 4
+-->
+<s:Skin xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" 
+    xmlns:fb="http://ns.adobe.com/flashbuilder/2009" alpha.disabled="0.5" xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Metadata>[HostComponent("com.flexicious.components.dashboard.DashboardTaskbar")]</fx:Metadata>
+	<fx:Declarations>
+		<!--- The component that renders the individual icon button for this dashlet in minimized state in the task bar.
+		@langversion 3.0
+		@playerversion Flash 10
+		@playerversion AIR 1.5
+		@productversion Flex 4
+		-->
+		<fx:Component id="minimizedDashletRenderer">
+			<s:Group width="40" height="100%"  
+					 mouseDown="currentState='down'"
+					 mouseUp="currentState='normal'"
+					 mouseOver="currentState='over'"
+					 mouseOut="currentState='normal'"
+					 >
+				<fx:Script>
+					<![CDATA[
+						import com.flexicious.components.IconRepository;
+						import com.flexicious.components.dashboard.Dashlet;
+						[Bindable()]
+						public var dashlet:Dashlet;
+					]]>
+				</fx:Script>
+				<s:states>
+					<s:State name="normal" />
+					<s:State name="disabled" />
+					<s:State name="over" />
+					<s:State name="down" />
+				</s:states>
+				<s:Rect top="1" right="1" bottom="1" left="1">
+					<s:fill>
+						<s:SolidColor color="0xFFFFFF"/>
+					</s:fill>
+				</s:Rect>
+				
+				<s:Rect top="2" right="2" bottom="2" left="2">
+					<s:fill>
+						<s:SolidColor color="0xC9CFD3"/>
+					</s:fill>
+				</s:Rect>
+
+				<s:Rect top="3" right="3" bottom="3" left="3">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:entries>
+								<s:GradientEntry color="0x888888" color.over="0x777777" color.down="0xCCCCCC" />
+								<s:GradientEntry color="0xCCCCCC" color.over="0xBBBBBB" color.down="0x888888" />
+							</s:entries>
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+
+				<s:Image left="12" top="16" height="16" width="16" source="{dashlet.enableIcon?dashlet.getStyle('icon'):IconRepository.maximize}"/>
+			</s:Group>
+		</fx:Component>
+		<!--- The component that renders the hover over preview image in the task bar
+		@langversion 3.0
+		@playerversion Flash 10
+		@playerversion AIR 1.5
+		@productversion Flex 4
+		-->
+		<fx:Component id="rollOverPreviewRenderer">
+			<s:Group width="200" height="150" 
+					 >
+				<fx:Script>
+					<![CDATA[
+						import com.flexicious.components.IconRepository;
+						import com.flexicious.components.dashboard.Dashlet;
+						[Bindable()]
+						public var dashlet:Dashlet;
+					]]>
+				</fx:Script>
+				<s:Rect top="1" right="1" bottom="1" left="1">
+					<s:fill>
+						<s:SolidColor color="0xFFFFFF"/>
+					</s:fill>
+				</s:Rect>
+				
+				<s:Rect top="2" right="2" bottom="2" left="2">
+					<s:fill>
+						<s:SolidColor color="0xC9CFD3"/>
+					</s:fill>
+				</s:Rect>
+				
+				<s:Rect top="3" right="3" bottom="3" left="3">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:entries>
+								<s:GradientEntry color="0x888888" />
+								<s:GradientEntry color="0xCCCCCC"  />
+							</s:entries>
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+				<s:Image left="5" right="5" bottom="5" top="5" source="{dashlet.generatePreivew()}" />
+			</s:Group>
+		</fx:Component>
+	</fx:Declarations>
+    
+    <s:states>
+        <s:State name="normal" />
+        <s:State name="disabled" />
+    </s:states>
+    
+	<s:Rect top="0" right="0" bottom="0" left="0">
+		<s:fill>
+			<s:LinearGradient>
+				<s:entries>
+					<s:GradientEntry color="0xEEECE1" />
+					<s:GradientEntry color="0xEEECE1" />
+				</s:entries>
+			</s:LinearGradient>
+		</s:fill>
+	</s:Rect>
+	<s:Rect top="0" right="1" height="1" left="1">
+		<s:fill>
+			<s:SolidColor color="0xC9CFD3"/>
+		</s:fill>
+	</s:Rect>
+	<s:Rect top="1" right="1" height="1" left="1">
+		<s:fill>
+			<s:SolidColor color="0xFFFFFF"/>
+		</s:fill>
+	</s:Rect>
+	<!--- @copy spark.components.SkinnableContainer#contentGroup -->
+	<s:Group id="contentGroup" left="2" right="2" top="3" bottom="2" minWidth="0" minHeight="0">
+		<s:layout>
+			<s:HorizontalLayout/>
+		</s:layout>
+	</s:Group>
+</s:Skin>

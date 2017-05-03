@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<query>
+    
+    <setStartDate>2017-04-25</setStartDate>
+    <setStartTime>10:50:26</setStartTime>
+    <ValidSession>T</ValidSession>
+    <ROW><BODY>SELECT
+PORTFOLIO, SUB_PORTFOLIO_ID, CCMSECTYPE, STATVALUE, MARKETVALUE 
+FROM TABLE A</BODY><QUERY_ID>1122</QUERY_ID><INVENTORY_NAME>TEST_VIEW</INVENTORY_NAME><SCHEMA_NAME>TEST</SCHEMA_NAME><QUERY_PATH>/test/</QUERY_PATH></ROW>
+    
+</query>

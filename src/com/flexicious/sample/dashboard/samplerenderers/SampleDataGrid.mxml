@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		 xmlns:fdg="com.flexicious.nestedtreedatagrid.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.flexicious.nestedtreedatagrid.cells.FlexDataGridFooterCell;
+			import com.flexicious.nestedtreedatagrid.events.FlexDataGridEvent;
+			import com.flexicious.nestedtreedatagrid.interfaces.IFlexDataGridCell;
+			import com.flexicious.nestedtreedatagrid.utils.ExtendedUIUtils;
+			import com.flexicious.sample.pdf.AlivePdfGenerator;
+			import com.flexicious.utils.UIUtils;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.Grouping;
+			import mx.collections.GroupingCollection2;
+			import mx.collections.GroupingField;
+			import mx.collections.HierarchicalCollectionView;
+			import mx.collections.HierarchicalData;
+			import mx.collections.IHierarchicalData;
+			import mx.collections.IList;
+			import mx.collections.IViewCursor;
+			import mx.controls.Alert;
+			import mx.messaging.management.ObjectInstance;
+			import mx.utils.ObjectUtil;
+			[Bindable]
+			private var dpFlat:ArrayCollection = new ArrayCollection([
+				{Region:"Southwest", Territory:"Arizona", Territory_Rep:"Barbara Jennings", Actual:38865, Estimate:40000},
+				{Region:"Southwest", Territory:"Arizona", Territory_Rep:"Dana Binn", Actual:29885, Estimate:30000},
+				{Region:"Southwest", Territory:"Central California", Territory_Rep:"Joe Smith", Actual:29134, Estimate:30000},
+				{Region:"Southwest", Territory:"Nevada", Territory_Rep:"Bethany Pittman", Actual:52888, Estimate:45000},
+				{Region:"Southwest", Territory:"Northern California", Territory_Rep:"Lauren Ipsum", Actual:38805, Estimate:40000},
+				{Region:"Southwest", Territory:"Northern California", Territory_Rep:"T.R. Smith", Actual:55498, Estimate:40000},
+				{Region:"Southwest", Territory:"Southern California", Territory_Rep:"Alice Treu", Actual:44985, Estimate:45000},
+				{Region:"Southwest", Territory:"Southern California", Territory_Rep:"Jane Grove", Actual:44913, Estimate:45000},
+				{Region:"NorthEast", Territory:"New York", Territory_Rep:"Jose Rodriguez", Actual:26992, Estimate:30000},
+				{Region:"NorthEast", Territory:"New York", Territory_Rep:"lisa Sims", Actual:47885, Estimate:50000},
+				{Region:"NorthEast", Territory:"New York", Territory_Rep:"lisa Sims", Actual:47885, Estimate:50001},
+				{Region:"NorthEast", Territory:"Massachusetts",	Territory_Rep:"kelly o'connell", Actual:172911, Estimate:20000},
+				{Region:"NorthEast", Territory:"Pennsylvania", Territory_Rep:"John Barnes", Actual:32105, Estimate:30000},
+				{Region:"MidWest", Territory:"Illinois", Territory_Rep:"Seth Brown", Actual:42511, Estimate:40000}
+			]);
+			
+			//function that takes a flat collection and groups it on basis of the provided group field.
+			public static function groupBy(dp:Object, prop:String
+										   , nullValue:String="[None]",filterfunction:Function=null,additionalProperties:Array=null,
+																	   useOtherBucket:Boolean=false):Array
+			{
+				if(!additionalProperties)additionalProperties=[];
+				var buckets:Dictionary = new Dictionary();
+				var key:Object;
+				var result:Array = [];
+				//iterate through the flat list and create a hierarchy
+				if(useOtherBucket){
+					buckets["other"] = [];
+				}
+				for each(var item:Object in dp){
+					key = UIUtils.resolveExpression(item,prop); //the parent
+					if(!buckets[key]){
+						buckets[key] = [];//the children
+					}
+					if(filterfunction==null || filterfunction(item))
+						buckets[key].push(item); //add to the parents child list
+					else if(useOtherBucket){
+						buckets["other"].push(item);
+					}
+				}
+				for (key  in buckets){
+					var obj:Object = {};
+					obj[prop]=key=="null"?nullValue:key;
+					obj['children']=buckets[key];
+					if(buckets[key].length>0){
+						for each(var addProp:String in additionalProperties){
+							obj[addProp] = buckets[key][0][addProp];
+						}
+					}
+					result.push(obj); //create the final structure
+				}
+				return result; //this will refresh the grid...
+			}
+			
+			private function init(): void {
+//				var regions:Object = groupBy(dpFlat,"Region", "(None)", null, null);				
+//				var region:Object;
+//				for each(region in regions){
+//					region.children = groupBy(region.children,"Territory", "(None)", null, null);
+//					
+////					var subGroup:Object = region.children;
+////					for each(var terrObj:Object in subGroup){
+////						terrObj.children = groupBy(terrObj.children,"Territory_Rep", "(None)", null, ['Actual', 'Estimate']);
+////					}
+//				}
+				
+				
+				var groupColsArr:Array = new Array();
+				
+				groupColsArr.push("Region");
+				groupColsArr.push("Territory");
+				groupColsArr.push("Territory_Rep");				
+				
+				var myGrp:Grouping = new Grouping();
+				var myGrpField:GroupingField;
+				var myGColl:GroupingCollection2 = new GroupingCollection2();
+				myGColl.source = dpFlat;
+				myGrp.fields = new Array();
+				for(var i:int=0; i<groupColsArr.length; i++)
+				{
+					myGrpField = new GroupingField(groupColsArr[i]);				
+					myGrp.fields.push(myGrpField);
+				}
+				myGrp.label = "Test";
+				myGColl.grouping = myGrp;
+				myGColl.childrenField="children";				
+				myGColl.refresh();			
+				
+				
+				
+				var hd:HierarchicalData = new HierarchicalData(myGColl.getRoot());
+				grid.dataProvider= new HierarchicalCollectionView(hd);
+				
+				
+		//		grid.dataProvider = myGColl.getRoot() ;	
+				
+				
+				grid.validateNow();
+				
+			}
+			
+			private function getDataValue(item:Object,col:FlexDataGridColumn,cell:IFlexDataGridCell=null):String{
+				var val:Object="";
+				var nestDepth:int=cell.level.nestDepth;				
+				if(nestDepth==3){
+					val=ExtendedUIUtils.resolveExpression(item, col.dataField)
+					return val?UIUtils.formatCurrency(parseFloat(val.toString())):"";
+				}
+				return getTotal(item,nestDepth+1,col.dataField,false);
+			}
+			
+			private function getFooter(cell:FlexDataGridFooterCell):String{
+				var val:Object=cell.rowInfo.data;
+				return getTotal(val,cell.level.nestDepth,cell.column.dataField,true);
+			}
+			
+			private function getTotal(val:Object,nestDepth:int,dataField:String,usePrefix:Boolean):*{
+				var arr:Object=[];
+				var lbl:String="";
+				var regionGroup:Object
+				var region:Object
+				var rep:Object
+				if(val is IList || val is Array){
+					//the top level footers converts the root to a flat array.
+					for each( regionGroup  in val){
+						for each( region  in regionGroup.children()){
+							for each( rep  in region.children()){
+								arr.push({"value":rep[dataField]});
+							}
+						}
+					}
+				}
+				else if(nestDepth==1){
+					for each( regionGroup  in val.children()){
+						for each( region  in regionGroup.children()){
+							for each( rep  in region.children()){
+								arr.push({"value":rep[dataField]});
+							}
+						}
+					}
+				}
+				else if(nestDepth==2){
+					for each(var region1:Object in val.children()){
+						for each(var rep1:Object in region1.children()){
+							arr.push({"value":rep1[dataField]});
+						}
+					}
+					lbl="Region "
+				}
+				else if(nestDepth==3){
+					for each(var rep2:Object in val.children()){
+						arr.push({"value":rep2[dataField]});
+					}
+					lbl="State "
+				}
+				return (usePrefix?lbl+"Sum:":"")+ UIUtils.formatCurrency(UIUtils.sum(arr,"value"));
+			}
+			
+			protected function grid_rendererInitializedHandler(event:FlexDataGridEvent):void
+			{
+				// TODO Auto-generated method stub
+				trace(event);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	<fdg:FlexDataGrid  width="100%" height="100%" id="grid" color="0x323232" creationComplete="init()" variableRowHeight="true" variableHeaderHeight="true" 
+					   enablePrint="true" enableExport="true" enableCopy="true" enableFilters="true" enableDrillDown="true"					    
+					   enableFooters="true"  initialSortField="title" rendererInitialized="grid_rendererInitializedHandler(event)"
+					   initialSortAscending="true" forcePagerRow="true"
+					   enableHideIfNoChildren="true" >
+		<fdg:columnLevel>
+			<fdg:FlexDataGridColumnLevel childrenField="children" >
+				<fdg:columns>					
+					
+					<fdg:FlexDataGridColumn dataField="Test" enableHierarchicalNestIndent="true" headerText="Region"   headerWordWrap="true"/>
+					<fdg:FlexDataGridColumn dataField="Territory" headerText="Territory"  headerWordWrap="true" />
+					<fdg:FlexDataGridColumn dataField="Territory_Rep" headerText="Territory Rep"  filterControl="TextInput" filterOperation="BeginsWith" headerWordWrap="true"/>
+					<fdg:FlexDataGridColumn dataField="Actual" headerText="Actual" headerWordWrap="true"  />
+					<fdg:FlexDataGridColumn dataField="Estimate" headerText="Estimate" headerWordWrap="true"  />
+					
+				</fdg:columns>
+				
+				<fdg:nextLevel>
+					
+					<fdg:FlexDataGridColumnLevel  childrenField="children" headerHeight="45" reusePreviousLevelColumns="true"  >
+						<fdg:nextLevel>
+							<fdg:FlexDataGridColumnLevel  childrenField="children" childrenCountField="numChildren" reusePreviousLevelColumns="true" >
+								
+							</fdg:FlexDataGridColumnLevel>	
+						</fdg:nextLevel>
+					</fdg:FlexDataGridColumnLevel>
+					
+					
+					
+				</fdg:nextLevel>
+			</fdg:FlexDataGridColumnLevel>
+		</fdg:columnLevel>
+	</fdg:FlexDataGrid>
+	
+	
+	
+</s:Group>

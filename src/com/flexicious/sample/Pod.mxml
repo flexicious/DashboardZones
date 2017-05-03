@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Panel 
+	xmlns:fx="http://ns.adobe.com/mxml/2009" 
+	xmlns:s="library://ns.adobe.com/flex/spark" 
+	xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+	xmlns:fdg="com.flexicious.nestedtreedatagrid.*" 
+	xmlns:controls="com.flexicious.controls.*" verticalScrollPolicy="off"
+	creationComplete="panel1_creationCompleteHandler(event)" xmlns:local="*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.flexicious.grids.filters.FilterSort;
+			import com.flexicious.nestedtreedatagrid.FlexDataGridColumn;
+			import com.flexicious.nestedtreedatagrid.FlexDataGridColumnLevel;
+			import com.flexicious.nestedtreedatagrid.cells.FlexDataGridFooterCell;
+			import com.flexicious.nestedtreedatagrid.events.FlexDataGridEvent;
+			import com.flexicious.nestedtreedatagrid.interfaces.IFlexDataGridCell;
+			import com.flexicious.nestedtreedatagrid.utils.ExtendedUIUtils;
+			import com.flexicious.utils.UIUtils;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalCollectionView;
+			import mx.collections.HierarchicalData;
+			import mx.collections.IHierarchicalData;
+			import mx.collections.IList;
+			import mx.collections.IViewCursor;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.MenuEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.rpc.http.mxml.HTTPService;
+			import mx.utils.ObjectUtil;
+			[Bindable]
+			private var dpFlat:ArrayCollection = new ArrayCollection();
+			
+			
+			private var filterTextChanged:Boolean;		
+			
+			private var isGlobalFilterApplied:Boolean = false;
+			
+			//function that takes a flat collection and groups it on basis of the provided group field.
+			public static function groupBy(dp:Object, prop:String
+										   , nullValue:String="[None]",filterfunction:Function=null,additionalProperties:Array=null,
+																									useOtherBucket:Boolean=false):Array
+			{
+				if(!additionalProperties)additionalProperties=[];
+				var buckets:Dictionary = new Dictionary();
+				var key:Object;
+				var result:Array = [];
+				//iterate through the flat list and create a hierarchy
+				if(useOtherBucket){
+					buckets["other"] = [];
+				}
+				for each(var item:Object in dp){
+					key = UIUtils.resolveExpression(item,prop); //the parent
+					if(!buckets[key]){
+						buckets[key] = [];//the children
+					}
+					if(filterfunction==null || filterfunction(item))
+						buckets[key].push(item); //add to the parents child list
+					else if(useOtherBucket){
+						buckets["other"].push(item);
+					}
+				}
+				for (key  in buckets){
+					var obj:Object = {};
+					obj[prop]=key=="null"?nullValue:key;
+					obj['children']=buckets[key];
+					if(buckets[key].length>0){
+						for each(var addProp:String in additionalProperties){
+							obj[addProp] = buckets[key][0][addProp];
+						}
+					}
+					result.push(obj); //create the final structure
+				}
+				return result; //this will refresh the grid...
+			}
+			
+			private function init(): void {
+				
+				getQueryXML();				
+				
+				//				var regions:Object = groupBy(dpFlat,"Region", "(None)", null, ['Actual', 'Estimate']);
+				//				var region:Object;
+				//				for each(region in regions){
+				//					region.children = groupBy(region.children,"Territory", "(None)", null, [ 'Actual', 'Estimate']);
+				//				}				
+				//				var subGroup:Object = region.children;
+				//				for each(var terrObj:Object in subGroup){
+				//					terrObj.children = groupBy(terrObj.children,"Territory_Rep", "(None)", null, ['Actual', 'Estimate']);
+				//				}
+				//				
+				//				grid.dataProvider=regions;
+				//				grid.validateNow();
+				//applyFilter();				
+				//grid.expandAll();
+			}
+			
+			
+			private function getQueryXML():void
+			{
+				grid.showSpinner("Loading Data ...");
+				var httpService:HTTPService = new HTTPService();
+				httpService.url = "getQuery.xml";
+				httpService.resultFormat = "e4x";				
+				httpService.addEventListener(FaultEvent.FAULT, onFaultHttpService);
+				httpService.addEventListener(ResultEvent.RESULT, getQueryXMLHandler);
+				httpService.send();
+			}
+			
+			private function onFaultHttpService(e:FaultEvent):void
+			{				
+				Alert.show("Unable to load xml.");
+			}
+			
+			
+			private function getQueryXMLHandler(e:ResultEvent):void
+			{
+				var queryXML:XML = new XML(e.result);				
+				getQueryResultXML();				
+			}
+			
+			
+			private function getQueryResultXML():void
+			{
+				var httpService:HTTPService = new HTTPService();
+				httpService.url = "getQueryResult.xml";
+				httpService.resultFormat = "e4x";				
+				httpService.addEventListener(FaultEvent.FAULT, onFaultHttpService);
+				httpService.addEventListener(ResultEvent.RESULT, getQueryResultXMLHandler);
+				httpService.send();
+			}
+			private static var storedResultForPrint:*=null;
+			private function getQueryResultXMLHandler(e:ResultEvent):void
+			{	
+				var resultAsXML:XML=new XML(e.result);
+				var resXMLList:XMLList = new XMLList(resultAsXML.ROW);
+				var gridDataProvider:XMLListCollection = new XMLListCollection(resXMLList);
+				dpFlat = createArrayCollectionFromXMLListCol(gridDataProvider);
+				
+				storedResultForPrint=dpFlat;
+				
+				var columnsArr:Array = new Array();
+				columnsArr.push("PORTFOLIO");
+				columnsArr.push("SUB_PORTFOLIO_ID");
+				columnsArr.push("CCMSECTYPE");
+				columnsArr.push("STATVALUE");
+				columnsArr.push("MARKETVALUE");
+				setHierarchicalGroupColumns(columnsArr, "PORTFOLIO,SUB_PORTFOLIO_ID,CCMSECTYPE"); 
+				
+				setGridDataProvider("PORTFOLIO,SUB_PORTFOLIO_ID,CCMSECTYPE", columnsArr);
+			}
+			
+			
+			public function createArrayCollectionFromXMLListCol(dpColl:XMLListCollection):ArrayCollection
+			{
+				var returnArr:ArrayCollection = new ArrayCollection();
+				for(var count:int=0; count<dpColl.length; count++)
+				{				
+					var rowXML:XML = new XML(dpColl.getItemAt(count));
+					var valObj:Object = new Object();
+					for(var i:int=0;i<rowXML.children().length();i++)
+					{
+						var currentNode:XML = rowXML.children()[i];		
+						var colNameStr:String = currentNode.name();
+						var colValue:String = rowXML[colNameStr];						
+						valObj[colNameStr] = colValue;
+					}
+					returnArr.addItem(valObj);
+				}
+				return returnArr;
+			}
+			
+			
+			public function setHierarchicalGroupColumns(colNamesArray:Array, columnGroups:String):void
+			{				
+				var gridColumns:Array = constructColumns(colNamesArray, columnGroups);
+				var colGroupsArr:Array;
+				if(columnGroups!=null)
+					colGroupsArr = columnGroups.split(",");
+				if(colGroupsArr != null)
+				{
+					var tmpColLevelArr:Array = new Array();
+					for(var i:int=0; i<colGroupsArr.length; i++)
+					{
+						var gridColumnLevel:FlexDataGridColumnLevel = new FlexDataGridColumnLevel();
+						gridColumnLevel.childrenField = "children";
+						tmpColLevelArr.push(gridColumnLevel);
+						if(i == 0)
+						{
+							gridColumnLevel.columns = gridColumns;
+							grid.columnLevel = gridColumnLevel;
+						}
+						else
+						{
+							gridColumnLevel.reusePreviousLevelColumns = true;
+							//gridColumnLevel.enableFooters = true;
+							var prevColLevel:FlexDataGridColumnLevel = tmpColLevelArr[i-1];
+							prevColLevel.nextLevel = gridColumnLevel;
+						}						
+					}
+				}
+				else
+				{
+					var columnLevel1:FlexDataGridColumnLevel = new FlexDataGridColumnLevel();
+					columnLevel1.childrenField = "children";
+					columnLevel1.columns = gridColumns;
+				}
+				grid.validateNow();
+			}			
+			
+			private function constructColumns(colNamesArray:Array, columnGroups:String):Array
+			{				
+				var colArray:Array = new Array();
+				for(var i:int=0; i<colNamesArray.length; i++)
+				{
+					var columnNameStr:String = colNamesArray[i];					
+					var gridColumn:FlexDataGridColumn = new FlexDataGridColumn();
+					gridColumn.dataField = columnNameStr;					
+					gridColumn.headerText = columnNameStr;
+					gridColumn.headerWordWrap = true;
+					if(columnNameStr == "PORTFOLIO" || columnNameStr == "SUB_PORTFOLIO_ID" || columnNameStr == "CCMSECTYPE")
+					{
+						//gridColumn.labelFunction2 = getDataValue;
+						//gridColumn.footerLabelFunction2 = getFooter;
+					}
+					constructFlexiciousColumnFilter(gridColumn);
+					colArray.push(gridColumn);	
+				}				
+				return colArray;
+			}
+			
+			private function constructFlexiciousColumnFilter(gridColumn:FlexDataGridColumn):void
+			{
+				if(gridColumn.headerText == "PORTFOLIO" || gridColumn.headerText == "SUB_PORTFOLIO_ID" )
+				{
+					gridColumn.filterControl = "MultiSelectComboBox";
+					gridColumn.filterOperation = "Equals";
+					gridColumn.filterComboBoxBuildFromGrid = true;
+				}
+				else
+				{
+					gridColumn.filterControl = "TextInput";
+					gridColumn.filterOperation = "Contains";
+				}
+			}
+			
+			
+			public function setGridDataProvider(columnGroups:String, colNamesArray:Array):void
+			{	
+				var colGroupsArr:Array;
+				if(columnGroups!=null)
+					colGroupsArr = columnGroups.split(",");
+				if(colGroupsArr != null)
+				{
+					var remainingColumnArr:Array = getColumnsWithoutGrouping(colNamesArray, colGroupsArr);
+					var tmpArr:Array = new Array();
+					for(var i:int=0; i<colGroupsArr.length; i++)
+					{
+						if(i==0)
+						{
+							var childDPObj:Object = groupBy(dpFlat, colGroupsArr[i], "(None)", null, remainingColumnArr);
+							tmpArr.push(childDPObj);
+						}
+						else
+						{
+							var prevChildDPObj:Object = tmpArr[i-1];
+							var subChild:Object;
+							for each(subChild in prevChildDPObj){
+								subChild.children = groupBy(subChild.children, colGroupsArr[i], "(None)", null, remainingColumnArr);
+							}
+							var childObj:Object = subChild.children;
+							tmpArr.push(childObj);
+						}
+					}
+					grid.dataProvider=tmpArr[0];					
+				}
+				else
+					grid.dataProvider=dpFlat;
+				
+				grid.validateNow();	
+				//grid.expandAll();				
+				grid.hideSpinner();								
+			}
+			
+			
+			public function getColumnsWithoutGrouping(colNamesArr:Array, colGroupsArr:Array):Array
+			{
+				var retArr:Array = new Array();
+				for(var i:int=0; i<colNamesArr.length; i++)
+				{
+					var name:String = colNamesArr[i];
+					if(colGroupsArr.indexOf(name) == -1)
+						retArr.push(name);
+				}
+				return retArr;
+			}
+			
+			private function getDataValue(item:Object,col:FlexDataGridColumn,cell:IFlexDataGridCell=null):String{
+				var val:Object="";
+				var nestDepth:int=1;
+				
+				if(cell == null)
+				{
+					//cell will be null in export mode. In that case, because we need level, we use this.grid.currentExportLevel
+					if(this.grid.currentExportLevel != null)
+						nestDepth = this.grid.currentExportLevel.nestDepth;
+				}
+				else
+				{
+					nestDepth = cell.level.nestDepth;
+				}
+				if(nestDepth==3){
+					val=ExtendedUIUtils.resolveExpression(item, col.dataField)
+					return val?UIUtils.formatCurrency(parseFloat(val.toString())):"";
+				}
+				return getTotal(item,nestDepth+1,col.dataField,false);
+			}			
+			private function getFooter(col:FlexDataGridColumn, cell:FlexDataGridFooterCell):String{
+				var val:Object=null;
+				var nestDepth:int=1;
+				
+				if(cell == null)
+				{
+					//cell will be null in export mode. In that case, we look at the currentExportLevel for the 
+					//level at which the export is happening. 
+					//Since we are calculating a footer cell, we need the list of items that makeup this footer.
+					//At the top level, our list of items is the dataprovider
+					//itself. At inner levels, we figure out the parent object, and get its children
+					if(this.grid.currentExportLevel != null)
+						nestDepth = this.grid.currentExportLevel.nestDepth;
+					if(nestDepth==1)						
+						val = this.grid.dataProvider;
+					else
+						val = this.grid.getParent(this.grid.recordBeingExported,this.grid.currentExportLevel);
+					
+				}
+				else
+				{
+					nestDepth = cell.level.nestDepth;
+					val = cell.rowInfo.data;
+				}
+				return getTotal(val,nestDepth,col.dataField,true);
+			}
+			
+			private function getTotal(val:Object,nestDepth:int,dataField:String,usePrefix:Boolean):*{
+				var arr:Object=[];
+				var lbl:String="";
+				var regionGroup:Object;
+				var region:Object;
+				var rep:Object;
+				if(val is IList || val is Array){
+					//the top level footers converts the root to a flat array.
+					for each( regionGroup  in val){
+						for each( region  in regionGroup.children){
+							for each( rep  in region.children){
+								arr.push({"value":rep[dataField]});
+							}
+						}
+					}
+				}
+				else if(nestDepth==1){
+					for each( regionGroup  in val.children()){
+						for each( region  in regionGroup.children){
+							for each( rep  in region.children){
+								arr.push({"value":rep[dataField]});
+							}
+						}
+					}
+				}
+				else if(nestDepth==2){
+					for each(var region1:Object in val.children){
+						for each(var rep1:Object in region1.children){
+							arr.push({"value":rep1[dataField]});
+						}
+					}
+					lbl="Region "
+				}
+				else if(nestDepth==3){
+					for each(var rep2:Object in val.children){
+						arr.push({"value":rep2[dataField]});
+					}
+					lbl="State "
+				}
+				return (usePrefix?lbl+"Sum:":"")+ UIUtils.formatCurrency(UIUtils.sum(arr,"value"));
+			}
+			
+			protected function grid_keyDownHandler(event:KeyboardEvent):void
+			{
+				if(event.keyCode == Keyboard.ENTER && this.filterText.text.length>=3)
+				{
+					
+					if(filterTextChanged)
+					{
+						filterTextChanged=false;
+						grid.globalHightlightString = this.filterText.text;
+						
+						var matchedObject:Object = grid.matchedObjects[0];
+						var rebuildNeeded:Boolean=false;
+						if(matchedObject && matchedObject.col) {
+							var lvl:FlexDataGridColumnLevel=matchedObject.col.level;
+							lvl.removeAllSorts();
+							var sort:FilterSort = new FilterSort();
+							sort.sortColumn = matchedObject.col.dataField;
+							lvl.addSort(sort);
+							rebuildNeeded=true;
+						} 
+						
+						if(grid.canExpandDown)
+						{
+							rebuildNeeded=false;
+							grid.globalHightlightAll = false;
+							grid.globalHightlightString = this.filterText.text;
+							grid.expandAll();
+							grid.rebuildBody(true);
+							grid.validateNow();
+						}
+						if(rebuildNeeded)
+						{
+							grid.rebuildBody(true);
+							grid.validateNow();
+						}
+						
+					}
+					grid.gotoNextHighlight(event.shiftKey);
+					setUpAndDownArrows();
+					isGlobalFilterApplied=true;
+				}
+				
+			}
+			
+			protected function filterText_keyUpHandler(event:KeyboardEvent):void
+			{
+				if(this.filterText.text.length<3 && isGlobalFilterApplied){
+					grid.collapseAll();
+					grid.clearCurrentHighlight(grid.matchedObjects[grid.currentMatch-1]);
+					isGlobalFilterApplied=false;
+				}
+			}
+			
+			private function setUpAndDownArrows():void
+			{
+				this.upArrowKey.enabled=true;
+				this.downArrowKey.enabled=true;
+				if(grid.matchedObjects.length ==0)
+				{
+					this.upArrowKey.enabled=false;					
+					this.downArrowKey.enabled=false;
+					this.lblFindResults.text = "Not Found";
+				}
+				else
+				{
+					this.upArrowKey.enabled=true;					
+					this.downArrowKey.enabled=true;					
+					this.lblFindResults.text = "Match " + grid.currentMatch + " of " + grid.matchedObjects.length;
+				}
+				setTimeout(filterText.setFocus,100); 
+			}
+			
+			protected function filterText_changeHandler(event:Event):void
+			{
+				
+				if(this.filterText.text.length < 3){
+					this.upArrowKey.enabled=false;
+					this.downArrowKey.enabled=false;
+				}
+				if(this.filterText.text.length == 0)
+				{
+					this.lblFindResults.text = "Search:";
+					return;
+				}
+				filterTextChanged=true;
+			}
+			
+			
+			protected function upArrow_clickHandler(event:MouseEvent):void
+			{
+				grid.gotoNextHighlight(true);
+				this.lblFindResults.text = "Match " + grid.currentMatch + " of " + grid.matchedObjects.length;
+			}
+			
+			protected function downArrow_clickHandler(event:MouseEvent):void
+			{
+				grid.gotoNextHighlight();
+				this.lblFindResults.text = "Match " + grid.currentMatch + " of " + grid.matchedObjects.length;
+				
+			}
+			
+			protected function flexdatagrid1_itemRightClickHandler(event:FlexDataGridEvent):void
+			{
+				grid.customContextMenuItems = [{type:'Separator'}
+					,{type:'Disabled Item',caption:'This is a disabled item',enabled:false}					
+					,"Custom Column Action: " + event.cell.column.headerText];				
+			}
+			
+			protected function flexdatagrid1_itemRightClickMenuSelectHandler(event:FlexDataGridEvent):void
+			{
+				Alert.show("Perform action : " + (event.triggerEvent as MenuEvent).label + " for cell " + event.cell.text);
+			}
+			
+			protected function highlight_clickHandler(event:MouseEvent):void
+			{
+				var cell:IFlexDataGridCell = grid.bodyContainer.rows[0].cells[1].component as IFlexDataGridCell;
+				if(cell){
+					grid.currentCell=cell;
+					grid.highlightRow(cell, cell.rowInfo, true);					
+				}
+			}
+			
+			protected function panel1_creationCompleteHandler(event:FlexEvent):void
+			{
+				if(storedResultForPrint){
+					grid.dataProvider=storedResultForPrint;
+					grid.validateNow();					
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<mx:VBox width="100%" height="100%">
+		<local:CustomGrid
+						id="grid" width="100%" height="87%" color="0x323232" 
+						  creationComplete="init()" enableCopy="true" enableDrillDown="true" showSpinnerOnFilterPageSort="true"
+						  enableExport="true" enableFilters="true" enableFooters="true" enablePaging="true"
+						  enableHideIfNoChildren="true" enablePrint="true" forcePagerRow="true" enableCustomContextMenu="true"
+						  initialSortAscending="true" initialSortField="title" selectionMode="singleRow" pageSize="15"					 
+						  itemRightClick="flexdatagrid1_itemRightClickHandler(event)"
+						  itemRightClickMenuSelect="flexdatagrid1_itemRightClickMenuSelectHandler(event)"
+						  variableHeaderHeight="true" variableRowHeight="true" >
+			<!--fdg:columnLevel>
+			<fdg:FlexDataGridColumnLevel childrenField="children" >
+			<fdg:columns>					
+			
+			<fdg:FlexDataGridColumn dataField="Region" enableHierarchicalNestIndent="true" headerText="Region"  />
+			<fdg:FlexDataGridColumn dataField="Territory" headerText="Territory"  headerWordWrap="true" />
+			<fdg:FlexDataGridColumn dataField="Territory_Rep" headerText="Territory Rep"  filterControl="TextInput" filterOperation="BeginsWith" headerWordWrap="true"/>
+			<fdg:FlexDataGridColumn dataField="Actual" headerText="Actual" headerWordWrap="true" footerAlign="center"
+			labelFunction2="getDataValue"
+			footerLabelFunction2="getFooter"/>
+			<fdg:FlexDataGridColumn dataField="Estimate" headerText="Estimate" headerWordWrap="true" footerAlign="center" 
+			labelFunction2="getDataValue"
+			footerLabelFunction2="getFooter"/>
+			
+			</fdg:columns>
+			
+			<fdg:nextLevel>
+			
+			<fdg:FlexDataGridColumnLevel  childrenField="children" headerHeight="45" reusePreviousLevelColumns="true" enableFooters="true" >
+			
+			<fdg:nextLevel>
+			<fdg:FlexDataGridColumnLevel  childrenField="children" childrenCountField="numChildren" reusePreviousLevelColumns="true" enableFooters="true" > 
+			
+			</fdg:FlexDataGridColumnLevel>
+			</fdg:nextLevel>
+			</fdg:FlexDataGridColumnLevel>					
+			
+			
+			</fdg:nextLevel>
+			</fdg:FlexDataGridColumnLevel>
+			</fdg:columnLevel-->
+		</local:CustomGrid>
+		
+		<mx:HBox x="0" y="1" width="480" height="22" backgroundColor="#B4ACAC" borderColor="#B88D8D" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+			<s:Label id="lblFindResults" height="100%" verticalAlign="middle" text="Search:"/>
+			<controls:TextInput id="filterText"
+								width="200" height="20"							
+								keyDown="grid_keyDownHandler(event)"
+								keyUp="filterText_keyUpHandler(event)"
+								change="filterText_changeHandler(event)" />		
+			
+			<s:Button id="upArrowKey" right="161" label="&lt;" width="28"  click="upArrow_clickHandler(event)" toolTip="Previous"/>
+			<s:Button id="downArrowKey" right="135" width="28" click="downArrow_clickHandler(event)" label="&gt;" toolTip="Next" />
+			<s:Button id="highlight" click="highlight_clickHandler(event)" label="Highlight"/>
+			<s:Spacer width="30"/>
+			<s:CheckBox label="Highlight All" change="grid.globalHightlightAll=!grid.globalHightlightAll"/>
+		</mx:HBox>
+		
+		
+	</mx:VBox>
+</mx:Panel>
