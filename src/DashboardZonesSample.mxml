@@ -11,13 +11,7 @@
 			import com.flexicious.components.dashboard.Dashlet;
 			import com.flexicious.components.dashboard.DragDropZone;
 			import com.flexicious.sample.Pod;
-			import com.flexicious.sample.dashboard.samplerenderers.SampleBarChart;
-			import com.flexicious.sample.dashboard.samplerenderers.SampleBubbleChart;
 			import com.flexicious.sample.dashboard.samplerenderers.SampleDataGrid;
-			import com.flexicious.sample.dashboard.samplerenderers.SampleFunnelChart;
-			import com.flexicious.sample.dashboard.samplerenderers.SamplePieChart;
-			import com.flexicious.sample.dashboard.samplerenderers.SamplePyramidChart;
-			import com.flexicious.sample.dashboard.samplerenderers.TextFlowWithImage;
 			import com.flexicious.sample.pdf.AlivePdfGenerator;
 			import com.flexicious.utils.UIUtils;
 			
