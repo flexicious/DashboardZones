@@ -11,7 +11,13 @@
 			import com.flexicious.components.dashboard.Dashlet;
 			import com.flexicious.components.dashboard.DragDropZone;
 			import com.flexicious.sample.Pod;
+			import com.flexicious.sample.dashboard.samplerenderers.SampleBarChart;
+			import com.flexicious.sample.dashboard.samplerenderers.SampleBubbleChart;
 			import com.flexicious.sample.dashboard.samplerenderers.SampleDataGrid;
+			import com.flexicious.sample.dashboard.samplerenderers.SampleFunnelChart;
+			import com.flexicious.sample.dashboard.samplerenderers.SamplePieChart;
+			import com.flexicious.sample.dashboard.samplerenderers.SamplePyramidChart;
+			import com.flexicious.sample.dashboard.samplerenderers.TextFlowWithImage;
 			import com.flexicious.sample.pdf.AlivePdfGenerator;
 			import com.flexicious.utils.UIUtils;
 			
@@ -51,7 +57,11 @@
 				dashlet.enableMaximizeAndRestore=true;
 				dashlet.enableMinimize=true;
 				
-				dashlet.itemRenderer = new ClassFactory(SampleDataGrid);
+				var recGridRenderer:ClassFactory = new ClassFactory(Pod);
+				recGridRenderer.properties = {columnGroups:"PORTFOLIO,SUB_PORTFOLIO_ID,CCMSECTYPE"};
+				dashlet.itemRenderer = recGridRenderer;
+				
+				
 				
 				dashletZone.addDashlet(dashlet);
 				dashlet.dragDropZone = dashletZone;
@@ -68,7 +78,9 @@
 				dashlet2.enableMaximizeAndRestore=true;
 				dashlet2.enableMinimize=true;		
 				
-				dashlet2.itemRenderer = new ClassFactory(SampleDataGrid);
+				var recGridRenderer2:ClassFactory = new ClassFactory(Pod);
+				recGridRenderer2.properties = {columnGroups:"PORTFOLIO,SUB_PORTFOLIO_ID"};
+				dashlet2.itemRenderer = recGridRenderer2;
 				
 				dashletZone.addDashlet(dashlet2);
 				
@@ -96,7 +108,9 @@
 				dashlet3.enableMaximizeAndRestore=true;
 				dashlet3.enableMinimize=true;	
 				
-				dashlet3.itemRenderer = new ClassFactory(SampleDataGrid);
+				var recGridRenderer3:ClassFactory = new ClassFactory(Pod);
+				recGridRenderer3.properties = {columnGroups:"PORTFOLIO"};
+				dashlet3.itemRenderer = recGridRenderer3;
 				
 				dashletZone2.addDashlet(dashlet3);
 				dashlet3.dragDropZone = dashletZone2;

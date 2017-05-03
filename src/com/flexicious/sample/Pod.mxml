@@ -4,11 +4,11 @@
 	xmlns:s="library://ns.adobe.com/flex/spark" 
 	xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
 	xmlns:fdg="com.flexicious.nestedtreedatagrid.*" 
-	xmlns:controls="com.flexicious.controls.*" verticalScrollPolicy="off"
-	creationComplete="panel1_creationCompleteHandler(event)" xmlns:local="*">
+	xmlns:controls="com.flexicious.controls.*" verticalScrollPolicy="off">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
+	
 	<fx:Script>
 		<![CDATA[
 			import com.flexicious.grids.filters.FilterSort;
@@ -21,6 +21,9 @@
 			import com.flexicious.utils.UIUtils;
 			
 			import mx.collections.ArrayCollection;
+			import mx.collections.Grouping;
+			import mx.collections.GroupingCollection2;
+			import mx.collections.GroupingField;
 			import mx.collections.HierarchicalCollectionView;
 			import mx.collections.HierarchicalData;
 			import mx.collections.IHierarchicalData;
@@ -28,7 +31,6 @@
 			import mx.collections.IViewCursor;
 			import mx.collections.XMLListCollection;
 			import mx.controls.Alert;
-			import mx.events.FlexEvent;
 			import mx.events.MenuEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
@@ -37,15 +39,22 @@
 			[Bindable]
 			private var dpFlat:ArrayCollection = new ArrayCollection();
 			
+			private var gridMenu:ContextMenu = new ContextMenu();
 			
-			private var filterTextChanged:Boolean;		
 			
+			private var filterTextChanged:Boolean;			
 			private var isGlobalFilterApplied:Boolean = false;
+			private var _groupColumnsStr:String;
+			
+			public function set columnGroups(val:String):void
+			{
+				this._groupColumnsStr = val;
+			}
 			
 			//function that takes a flat collection and groups it on basis of the provided group field.
 			public static function groupBy(dp:Object, prop:String
 										   , nullValue:String="[None]",filterfunction:Function=null,additionalProperties:Array=null,
-																									useOtherBucket:Boolean=false):Array
+																	   useOtherBucket:Boolean=false):Array
 			{
 				if(!additionalProperties)additionalProperties=[];
 				var buckets:Dictionary = new Dictionary();
@@ -134,7 +143,7 @@
 				httpService.addEventListener(ResultEvent.RESULT, getQueryResultXMLHandler);
 				httpService.send();
 			}
-			private static var storedResultForPrint:*=null;
+			
 			private function getQueryResultXMLHandler(e:ResultEvent):void
 			{	
 				var resultAsXML:XML=new XML(e.result);
@@ -142,17 +151,16 @@
 				var gridDataProvider:XMLListCollection = new XMLListCollection(resXMLList);
 				dpFlat = createArrayCollectionFromXMLListCol(gridDataProvider);
 				
-				storedResultForPrint=dpFlat;
-				
 				var columnsArr:Array = new Array();
 				columnsArr.push("PORTFOLIO");
 				columnsArr.push("SUB_PORTFOLIO_ID");
 				columnsArr.push("CCMSECTYPE");
 				columnsArr.push("STATVALUE");
 				columnsArr.push("MARKETVALUE");
-				setHierarchicalGroupColumns(columnsArr, "PORTFOLIO,SUB_PORTFOLIO_ID,CCMSECTYPE"); 
+				setHierarchicalGroupColumns(columnsArr, _groupColumnsStr); 
 				
-				setGridDataProvider("PORTFOLIO,SUB_PORTFOLIO_ID,CCMSECTYPE", columnsArr);
+				setGridDataProvider(_groupColumnsStr, columnsArr);
+				
 			}
 			
 			
@@ -179,37 +187,10 @@
 			public function setHierarchicalGroupColumns(colNamesArray:Array, columnGroups:String):void
 			{				
 				var gridColumns:Array = constructColumns(colNamesArray, columnGroups);
-				var colGroupsArr:Array;
-				if(columnGroups!=null)
-					colGroupsArr = columnGroups.split(",");
-				if(colGroupsArr != null)
-				{
-					var tmpColLevelArr:Array = new Array();
-					for(var i:int=0; i<colGroupsArr.length; i++)
-					{
-						var gridColumnLevel:FlexDataGridColumnLevel = new FlexDataGridColumnLevel();
-						gridColumnLevel.childrenField = "children";
-						tmpColLevelArr.push(gridColumnLevel);
-						if(i == 0)
-						{
-							gridColumnLevel.columns = gridColumns;
-							grid.columnLevel = gridColumnLevel;
-						}
-						else
-						{
-							gridColumnLevel.reusePreviousLevelColumns = true;
-							//gridColumnLevel.enableFooters = true;
-							var prevColLevel:FlexDataGridColumnLevel = tmpColLevelArr[i-1];
-							prevColLevel.nextLevel = gridColumnLevel;
-						}						
-					}
-				}
-				else
-				{
-					var columnLevel1:FlexDataGridColumnLevel = new FlexDataGridColumnLevel();
-					columnLevel1.childrenField = "children";
-					columnLevel1.columns = gridColumns;
-				}
+				var gridBaseColumnLevel:FlexDataGridColumnLevel = new FlexDataGridColumnLevel();
+				gridBaseColumnLevel.childrenField = "children";
+				gridBaseColumnLevel.columns = gridColumns;				
+				grid.columnLevel = gridBaseColumnLevel;
 				grid.validateNow();
 			}			
 			
@@ -223,10 +204,10 @@
 					gridColumn.dataField = columnNameStr;					
 					gridColumn.headerText = columnNameStr;
 					gridColumn.headerWordWrap = true;
-					if(columnNameStr == "PORTFOLIO" || columnNameStr == "SUB_PORTFOLIO_ID" || columnNameStr == "CCMSECTYPE")
+					if(columnNameStr == "STATVALUE" || columnNameStr == "MARKETVALUE")
 					{
-						//gridColumn.labelFunction2 = getDataValue;
-						//gridColumn.footerLabelFunction2 = getFooter;
+						gridColumn.labelFunction2 = getDataValue;
+						gridColumn.footerLabelFunction2 = getFooter;
 					}
 					constructFlexiciousColumnFilter(gridColumn);
 					colArray.push(gridColumn);	
@@ -258,35 +239,35 @@
 				if(colGroupsArr != null)
 				{
 					var remainingColumnArr:Array = getColumnsWithoutGrouping(colNamesArray, colGroupsArr);
+					var dp_level_0:Object = new Object();
 					var tmpArr:Array = new Array();
 					for(var i:int=0; i<colGroupsArr.length; i++)
 					{
 						if(i==0)
 						{
-							var childDPObj:Object = groupBy(dpFlat, colGroupsArr[i], "(None)", null, remainingColumnArr);
-							tmpArr.push(childDPObj);
+							dp_level_0 = groupBy(dpFlat, colGroupsArr[i], "(None)", null, remainingColumnArr);
+							tmpArr.push(dp_level_0);
 						}
 						else
 						{
-							var prevChildDPObj:Object = tmpArr[i-1];
-							var subChild:Object;
-							for each(subChild in prevChildDPObj){
-								subChild.children = groupBy(subChild.children, colGroupsArr[i], "(None)", null, remainingColumnArr);
+							var prevLevelObj:Object = tmpArr[i-1];
+							var level_0_Arr:Array = new Array();
+							for each(var level_0_object:Object in prevLevelObj)
+							{
+								level_0_object.children = groupBy(level_0_object.children, colGroupsArr[i], "(None)", null, remainingColumnArr);
+								level_0_Arr.push(level_0_object);
 							}
-							var childObj:Object = subChild.children;
-							tmpArr.push(childObj);
+							tmpArr.push(level_0_Arr);
 						}
 					}
-					grid.dataProvider=tmpArr[0];					
+					grid.dataProvider=dp_level_0;										
 				}
 				else
-					grid.dataProvider=dpFlat;
-				
+					grid.dataProvider=dpFlat;				
 				grid.validateNow();	
-				//grid.expandAll();				
-				grid.hideSpinner();								
+				grid.hideSpinner();			
+				
 			}
-			
 			
 			public function getColumnsWithoutGrouping(colNamesArr:Array, colGroupsArr:Array):Array
 			{
@@ -378,13 +359,13 @@
 							arr.push({"value":rep1[dataField]});
 						}
 					}
-					lbl="Region "
+					lbl=" "
 				}
 				else if(nestDepth==3){
 					for each(var rep2:Object in val.children){
 						arr.push({"value":rep2[dataField]});
 					}
-					lbl="State "
+					lbl=" "
 				}
 				return (usePrefix?lbl+"Sum:":"")+ UIUtils.formatCurrency(UIUtils.sum(arr,"value"));
 			}
@@ -491,9 +472,13 @@
 			}
 			
 			protected function flexdatagrid1_itemRightClickHandler(event:FlexDataGridEvent):void
-			{
+			{				
+				var tmp:Array = new Array();
+				tmp.push("Test1");
+				tmp.push("Test2");
 				grid.customContextMenuItems = [{type:'Separator'}
-					,{type:'Disabled Item',caption:'This is a disabled item',enabled:false}					
+					,{type:'Disabled Item',caption:'This is a disabled item',enabled:false}	
+					,{type:'Multi-Level', caption:tmp}	
 					,"Custom Column Action: " + event.cell.column.headerText];				
 			}
 			
@@ -502,37 +487,21 @@
 				Alert.show("Perform action : " + (event.triggerEvent as MenuEvent).label + " for cell " + event.cell.text);
 			}
 			
-			protected function highlight_clickHandler(event:MouseEvent):void
-			{
-				var cell:IFlexDataGridCell = grid.bodyContainer.rows[0].cells[1].component as IFlexDataGridCell;
-				if(cell){
-					grid.currentCell=cell;
-					grid.highlightRow(cell, cell.rowInfo, true);					
-				}
-			}
-			
-			protected function panel1_creationCompleteHandler(event:FlexEvent):void
-			{
-				if(storedResultForPrint){
-					grid.dataProvider=storedResultForPrint;
-					grid.validateNow();					
-				}
-			}
-			
 		]]>
 	</fx:Script>
 	
 	
 	<mx:VBox width="100%" height="100%">
-		<local:CustomGrid
-						id="grid" width="100%" height="87%" color="0x323232" 
+		
+		
+		<fdg:FlexDataGrid id="grid" width="100%" height="87%" color="0x323232" 
 						  creationComplete="init()" enableCopy="true" enableDrillDown="true" showSpinnerOnFilterPageSort="true"
 						  enableExport="true" enableFilters="true" enableFooters="true" enablePaging="true"
-						  enableHideIfNoChildren="true" enablePrint="true" forcePagerRow="true" enableCustomContextMenu="true"
+						  enableHideIfNoChildren="true" enablePrint="true" forcePagerRow="false" enableCustomContextMenu="true"
 						  initialSortAscending="true" initialSortField="title" selectionMode="singleRow" pageSize="15"					 
 						  itemRightClick="flexdatagrid1_itemRightClickHandler(event)"
-						  itemRightClickMenuSelect="flexdatagrid1_itemRightClickMenuSelectHandler(event)"
-						  variableHeaderHeight="true" variableRowHeight="true" >
+						  itemRightClickMenuSelect="flexdatagrid1_itemRightClickMenuSelectHandler(event)" enableDynamicLevels="true"
+						  variableHeaderHeight="true" variableRowHeight="true" enableMultiColumnSort="true">
 			<!--fdg:columnLevel>
 			<fdg:FlexDataGridColumnLevel childrenField="children" >
 			<fdg:columns>					
@@ -564,7 +533,7 @@
 			</fdg:nextLevel>
 			</fdg:FlexDataGridColumnLevel>
 			</fdg:columnLevel-->
-		</local:CustomGrid>
+		</fdg:FlexDataGrid>
 		
 		<mx:HBox x="0" y="1" width="480" height="22" backgroundColor="#B4ACAC" borderColor="#B88D8D" horizontalScrollPolicy="off" verticalScrollPolicy="off">
 			<s:Label id="lblFindResults" height="100%" verticalAlign="middle" text="Search:"/>
@@ -576,7 +545,7 @@
 			
 			<s:Button id="upArrowKey" right="161" label="&lt;" width="28"  click="upArrow_clickHandler(event)" toolTip="Previous"/>
 			<s:Button id="downArrowKey" right="135" width="28" click="downArrow_clickHandler(event)" label="&gt;" toolTip="Next" />
-			<s:Button id="highlight" click="highlight_clickHandler(event)" label="Highlight"/>
+			
 			<s:Spacer width="30"/>
 			<s:CheckBox label="Highlight All" change="grid.globalHightlightAll=!grid.globalHightlightAll"/>
 		</mx:HBox>
